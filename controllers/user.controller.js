@@ -80,6 +80,52 @@ const getEditProfileData = async (req, res, next) => {
 };
 
 /**
+ * @desc Upload profile picture
+ * @route PUT /user/upload-profile-picture
+ * @access Private
+ */
+const uploadProfilePicture = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      const error = new Error("User not found");
+      error.status = 404;
+      throw error;
+    }
+
+    const upload = uploadMiddleware("profilePicture", "profile-pictures");
+
+    upload(req, res, async (err) => {
+      if (err) {
+        return res
+          .status(400)
+          .json({ error: "Failed to upload profile picture" });
+      }
+
+      if (req.file) {
+        const prevProfilePicture = user.profilePicture;
+
+        if (prevProfilePicture !== "default.jpg") {
+          try {
+            fs.unlink("./public/profile-pictures/" + prevProfilePicture);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+
+        user.profilePicture = req.file.filename;
+        await user.save();
+        res.json({ filename: req.file.filename });
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * @desc Update user profile
  * @route PUT /user/edit-profile
  * @access Private
@@ -95,45 +141,26 @@ const updateProfile = async (req, res, next) => {
       throw error;
     }
 
-    const upload = uploadMiddleware("profilePicture", "profile-pictures");
-    upload(req, res, async (err) => {
-      if (err) {
-        return next(err);
-      }
+    if (updates.about) {
+      user.about = updates.about.trim() || user.about;
+    }
 
-      const prevProfilePicture = user.profilePicture;
-      if (req.file && prevProfilePicture !== "default.jpg") {
-        try {
-          fs.unlink("./public/profile-pictures/" + prevProfilePicture);
-        } catch (err) {
-          console.error(err);
-        }
+    if (updates.social) {
+      if (updates.social.twitter) {
+        user.social.twitter =
+          updates.social.twitter.trim() || user.social.twitter;
       }
+      if (updates.social.github) {
+        user.social.github = updates.social.github.trim() || user.social.github;
+      }
+      if (updates.social.linkedin) {
+        user.social.linkedin =
+          updates.social.linkedin.trim() || user.social.linkedin;
+      }
+    }
 
-      if (updates.about) {
-        user.about = updates.about.trim() || user.about;
-      }
-      if (updates.social) {
-        if (updates.social.twitter) {
-          user.social.twitter =
-            updates.social.twitter.trim() || user.social.twitter;
-        }
-        if (updates.social.github) {
-          user.social.github =
-            updates.social.github.trim() || user.social.github;
-        }
-        if (updates.social.linkedin) {
-          user.social.linkedin =
-            updates.social.linkedin.trim() || user.social.linkedin;
-        }
-      }
-      if (req.file) {
-        user.profilePicture = req.file.filename;
-      }
-
-      const updatedUser = await user.save();
-      res.json(updatedUser);
-    });
+    const updatedUser = await user.save();
+    res.json(updatedUser);
   } catch (err) {
     next(err);
   }
@@ -324,6 +351,7 @@ const changePassword = async (req, res, next) => {
 module.exports = {
   userProfile,
   getEditProfileData,
+  uploadProfilePicture,
   updateProfile,
   uploadThumbnail,
   createPost,

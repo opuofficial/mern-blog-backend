@@ -6,6 +6,7 @@ const verifyToken = require("../middlewares/verifyToken.middleware");
 const {
   userProfile,
   getEditProfileData,
+  uploadProfilePicture,
   updateProfile,
   uploadThumbnail,
   createPost,
@@ -17,6 +18,7 @@ const {
 router.get("/profile", verifyToken, userProfile);
 router.get("/edit-profile", verifyToken, getEditProfileData);
 router.put("/edit-profile", verifyToken, updateProfile);
+router.put("/upload-profile-picture", verifyToken, uploadProfilePicture);
 router.post("/upload-thumbnail", verifyToken, uploadThumbnail);
 router.post("/create-post", verifyToken, createPost);
 router.get("/bookmarks", verifyToken, getBookmarkedPosts);
